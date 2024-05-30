@@ -1,5 +1,5 @@
-// Package scheduler provides a simple scheduler implementation to trigger a function every time.
-package scheduler
+// Package publisher provides a simple scheduler implementation to trigger some routine at a given interval.
+package publisher
 
 import (
 	"log/slog"
