@@ -48,8 +48,9 @@ func (m *Metrics) ListDLQSubscriptions() ([]string, error) {
 			break
 		}
 
-		// if
 		if strings.Contains(sub.Name, ".push.dlq.pull") {
+			// The sub.Name comes in the format projects/{projectID}/subscriptions/{subscriptionID}
+			// We need to extract the subscriptionID
 			splitedSubs := strings.Split(sub.Name, "/")
 			subscriptions = append(subscriptions, splitedSubs[len(splitedSubs)-1])
 		}

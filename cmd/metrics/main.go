@@ -52,10 +52,21 @@ var list = &cobra.Command{
 var metricsAllDLQSubscriptionsCmd = &cobra.Command{
 	Use:     "metrics-dlq",
 	Aliases: []string{"mdlq"},
-	Short:   "Show the number of undelivered messages in all the dead-letter-queue subscriptions",
-	Example: "metrics metrics-dlq --projectID=jojo-is-awesome-project",
+	Short:   "Show the number of undelivered messages for the top 5 dead-letter-queue subscriptions",
+	Example: "metrics metrics-dlq --projectID=jojo-is-awesome-project --numMostOffenders=5",
 	Run: func(cmd *cobra.Command, _ []string) {
 		projectID := cmd.Flag("projectID").Value.String()
+		numMostOffenders, err := cmd.Flags().GetInt("numMostOffenders")
+		if err != nil {
+			slog.Error("Error getting the number of most offenders", "error", err)
+			return
+		}
+
+		if numMostOffenders < 0 {
+			slog.Error("The number of most offenders must be greater than 0")
+			return
+		}
+
 		m := publisher.NewMetrics(projectID, "")
 
 		subscriptions, err := m.ListDLQSubscriptions()
@@ -95,17 +106,18 @@ var metricsAllDLQSubscriptionsCmd = &cobra.Command{
 			return subMetrics[i].UndeliveredMessagMean > subMetrics[j].UndeliveredMessagMean
 		})
 
-		for _, subMetric := range subMetrics[:5] {
+		for _, subMetric := range subMetrics[:numMostOffenders] {
 			slog.Info("DLQ subscription", "subscription", subMetric.Subscription, "undeliveredMessagesMean", subMetric.UndeliveredMessagMean)
 		}
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().String("projectID", "", "The project ID")
-	rootCmd.Flags().String("subscriptionID", "", "The subscription ID")
+	rootCmd.PersistentFlags().StringP("projectID", "p", "", "The project ID")
+	rootCmd.Flags().StringP("subscriptionID", "s", "", "The subscription ID")
 	rootCmd.AddCommand(list)
 	rootCmd.AddCommand(metricsAllDLQSubscriptionsCmd)
+	metricsAllDLQSubscriptionsCmd.Flags().IntP("numMostOffenders", "n", 5, "The number of most offenders")
 }
 
 func execute() {
