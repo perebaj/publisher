@@ -3,9 +3,12 @@ package publisher
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3/v2"
 	monitoringpb "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb"
+	pubsub "cloud.google.com/go/pubsub/apiv1"
+	pubsubpb "cloud.google.com/go/pubsub/apiv1/pubsubpb"
 	"google.golang.org/api/iterator"
 )
 
@@ -23,6 +26,40 @@ func NewMetrics(project, subscription string) *Metrics {
 		Project:      project,
 		Subscription: subscription,
 	}
+}
+
+// ListDLQSubscriptions returns a list of all the dead-letter-queue subscriptions
+func (m *Metrics) ListDLQSubscriptions() ([]string, error) {
+	ctx := context.Background()
+	c, err := pubsub.NewSubscriberClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &pubsubpb.ListSubscriptionsRequest{
+		Project: fmt.Sprintf("projects/%s", m.Project),
+	}
+	it := c.ListSubscriptions(ctx, req)
+
+	var subscriptions []string
+	for {
+		sub, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		// if
+		if strings.Contains(sub.Name, ".push.dlq.pull") {
+			splitedSubs := strings.Split(sub.Name, "/")
+			subscriptions = append(subscriptions, splitedSubs[len(splitedSubs)-1])
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return subscriptions, nil
 }
 
 // NumUndeliveredMessagesMean returns the number of undelivered messages in the subscription
