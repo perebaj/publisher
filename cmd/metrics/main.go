@@ -84,6 +84,7 @@ var metricsAllDLQSubscriptionsCmd = &cobra.Command{
 
 		var subMetrics []SubMetric
 
+		//TODO(@perebaj): Create worker pool to process the subscriptions concurrently
 		bar := progressbar.Default(int64(len(subscriptions)))
 		for _, sub := range subscriptions {
 			m.Subscription = sub
