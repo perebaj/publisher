@@ -15,12 +15,15 @@ type Subscription struct {
 	sub *pubsub.Subscription
 	// messages2Pull is the number of messages to pull from the subscription.
 	messages2Pull int
+	Done          chan struct{}
 }
 
 // NewSubscription creates a new Subscription.
 func NewSubscription(subscription *pubsub.Subscription, messages2Pull int) *Subscription {
 	return &Subscription{sub: subscription,
-		messages2Pull: messages2Pull}
+		messages2Pull: messages2Pull,
+		Done:          make(chan struct{}),
+	}
 }
 
 // Handler is a generic function to handle messages.
@@ -47,7 +50,5 @@ func (s *Subscription) Receive(ctx context.Context, handler Handler) error {
 			}
 		}()
 	}
-
 	return nil
 }
-

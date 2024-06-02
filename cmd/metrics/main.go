@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"sort"
 
@@ -18,8 +19,8 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, _ []string) {
 		subscriptionID := cmd.Flag("subscriptionID").Value.String()
 		projectID := cmd.Flag("projectID").Value.String()
-		m := publisher.NewMetrics(projectID, subscriptionID)
-		undeliveredMessMean, err := m.NumUndeliveredMessagesMean()
+		ctx := context.Background()
+		undeliveredMessMean, err := publisher.NumUndeliveredMessagesMean(ctx, projectID, subscriptionID)
 		if err != nil {
 			slog.Error("Error getting the number of undelivered messages", "error", err)
 		}
@@ -35,9 +36,8 @@ var list = &cobra.Command{
 	Example: "metrics list --projectID=jojo-is-awesome-project",
 	Run: func(cmd *cobra.Command, _ []string) {
 		projectID := cmd.Flag("projectID").Value.String()
-		m := publisher.NewMetrics(projectID, "")
-
-		subscriptions, err := m.ListDLQSubscriptions()
+		ctx := context.Background()
+		subscriptions, err := publisher.ListDLQSubscriptions(ctx, projectID)
 		if err != nil {
 			slog.Error("Error listing the DLQ subscriptions", "error", err)
 			return
@@ -66,10 +66,8 @@ var metricsAllDLQSubscriptionsCmd = &cobra.Command{
 			slog.Error("The number of most offenders must be greater than 0")
 			return
 		}
-
-		m := publisher.NewMetrics(projectID, "")
-
-		subscriptions, err := m.ListDLQSubscriptions()
+		ctx := context.Background()
+		subscriptions, err := publisher.ListDLQSubscriptions(ctx, projectID)
 		if err != nil {
 			slog.Error("Error listing the DLQ subscriptions", "error", err)
 			return
@@ -86,9 +84,9 @@ var metricsAllDLQSubscriptionsCmd = &cobra.Command{
 
 		//TODO(@perebaj): Create worker pool to process the subscriptions concurrently
 		bar := progressbar.Default(int64(len(subscriptions)))
+		ctx = context.Background()
 		for _, sub := range subscriptions {
-			m.Subscription = sub
-			undeliveredMessMean, err := m.NumUndeliveredMessagesMean()
+			undeliveredMessMean, err := publisher.NumUndeliveredMessagesMean(ctx, projectID, sub)
 			if err != nil {
 				slog.Error("Error getting the number of undelivered messages", "error", err)
 			}

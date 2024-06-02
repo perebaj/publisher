@@ -12,32 +12,15 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// Metrics gather all the necessary fields to get metrics from GCP
-type Metrics struct {
-	// Project is the GCP project ID
-	Project string
-	// Subscription is the GCP Pub/Sub subscription name
-	Subscription string
-}
-
-// NewMetrics creates a new metrics
-func NewMetrics(project, subscription string) *Metrics {
-	return &Metrics{
-		Project:      project,
-		Subscription: subscription,
-	}
-}
-
-// ListDLQSubscriptions returns a list of all the dead-letter-queue subscriptions
-func (m *Metrics) ListDLQSubscriptions() ([]string, error) {
-	ctx := context.Background()
+// ListDLQSubscriptions returns a list of all the dead-letter-queue subscriptions present in the projectID provided
+func ListDLQSubscriptions(ctx context.Context, projectID string) ([]string, error) {
 	c, err := pubsub.NewSubscriberClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	req := &pubsubpb.ListSubscriptionsRequest{
-		Project: fmt.Sprintf("projects/%s", m.Project),
+		Project: fmt.Sprintf("projects/%s", projectID),
 	}
 	it := c.ListSubscriptions(ctx, req)
 
@@ -64,8 +47,7 @@ func (m *Metrics) ListDLQSubscriptions() ([]string, error) {
 }
 
 // NumUndeliveredMessagesMean returns the number of undelivered messages in the subscription
-func (m *Metrics) NumUndeliveredMessagesMean() (*float64, error) {
-	ctx := context.Background()
+func NumUndeliveredMessagesMean(ctx context.Context, projectID, subscriptionID string) (*float64, error) {
 	c, err := monitoring.NewQueryClient(ctx)
 	if err != nil {
 		return nil, err
@@ -75,14 +57,14 @@ func (m *Metrics) NumUndeliveredMessagesMean() (*float64, error) {
 	}()
 
 	req := &monitoringpb.QueryTimeSeriesRequest{
-		Name: fmt.Sprintf("projects/%s", m.Project), // optional
+		Name: fmt.Sprintf("projects/%s", projectID), // optional
 		Query: fmt.Sprintf(`fetch pubsub_subscription
 		| metric 'pubsub.googleapis.com/subscription/num_undelivered_messages'
 		| filter (resource.subscription_id == '%s')
 		| group_by 1m,
 			[value_num_undelivered_messages_mean:
 			   mean(value.num_undelivered_messages)]
-		| within 5m`, m.Subscription),
+		| within 5m`, subscriptionID),
 	}
 	var numUndeliveredMessagesMean = 0.0
 	it := c.QueryTimeSeries(ctx, req)
